@@ -1,6 +1,12 @@
 import socket
 import logging
+import signal
 
+def sigterm_handler(signum, frame):
+    raise SystemExit
+
+# Register the signal handler
+signal.signal(signal.SIGTERM, sigterm_handler)
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -20,9 +26,14 @@ class Server:
 
         # TODO: Modify this program to handle signal to graceful shutdown
         # the server
-        while True:
-            client_sock = self.__accept_new_connection()
-            self.__handle_client_connection(client_sock)
+        try:
+            while True:
+                client_sock = self.__accept_new_connection()
+                self.__handle_client_connection(client_sock)
+        except SystemExit:
+            logging.info("action: shutdown_server | result: in_progress")
+            self._server_socket.close()
+            logging.info("action: shutdown_server | result: success")
 
     def __handle_client_connection(self, client_sock):
         """

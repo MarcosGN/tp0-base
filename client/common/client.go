@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/op/go-logging"
@@ -52,6 +54,8 @@ func (c *Client) createClientSocket() error {
 
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
+	signalChannel := make(chan os.Signal, 1)
+	signal.Notify(signalChannel, os.Interrupt)
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
@@ -86,4 +90,6 @@ func (c *Client) StartClientLoop() {
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+	<-signalChannel
+	log.Info("action: shutdown_client | result: success")
 }
