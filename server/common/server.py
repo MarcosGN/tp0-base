@@ -1,12 +1,20 @@
 import socket
 import logging
 import signal
+import sys
 
-def sigterm_handler(signum, frame):
-    raise SystemExit
+def signal_handler(self, signum, frame):
+    self.server.running = False
+    self.server._server_socket.close()
+    for client in self.server.clients:
+        client.close()
+    logging.info("action: shutdown_server | result: success")
+    sys.exit(0)
 
 # Register the signal handler
-signal.signal(signal.SIGTERM, sigterm_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -14,6 +22,8 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self.clients = []
+        self.running = True
 
     def run(self):
         """
@@ -23,17 +33,15 @@ class Server:
         communication with a client. After client with communucation
         finishes, servers starts to accept new connections again
         """
-
-        # TODO: Modify this program to handle signal to graceful shutdown
-        # the server
-        try:
-            while True:
+        while self.running:
+            try:
                 client_sock = self.__accept_new_connection()
+                self.clients.append(client_sock)
                 self.__handle_client_connection(client_sock)
-        except SystemExit:
-            logging.info("action: shutdown_server | result: in_progress")
-            self._server_socket.close()
-            logging.info("action: shutdown_server | result: success")
+            except:
+                logging.info("action: shutdown_server | result: in_progress")
+                break
+
 
     def __handle_client_connection(self, client_sock):
         """
@@ -53,6 +61,7 @@ class Server:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.close()
+            self.clients.remove(client_sock)
 
     def __accept_new_connection(self):
         """
