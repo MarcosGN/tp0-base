@@ -3,6 +3,8 @@ import logging
 import signal
 import sys
 
+from common.utils import Bet, store_bets
+
 def signal_handler(self, signum, frame):
     self.server.running = False
     self.server._server_socket.close()
@@ -15,6 +17,58 @@ def signal_handler(self, signum, frame):
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
 
+def recv_fully(sock, n):
+    """Receive exactly n bytes from the socket."""
+    data = bytearray()
+    while len(data) < n:
+        packet = sock.recv(n - len(data))
+        if not packet:
+            raise ConnectionError("Socket connection closed")
+        data.extend(packet)
+    return bytes(data)
+
+def parse_bet(payload):
+    offset = 0
+
+    message_type = payload[offset]
+    offset += 1
+
+    if message_type != 0x01:
+        raise ValueError("Invalid message type")
+    
+    agency = int.from_bytes(payload[offset:offset+4], byteorder='big')
+    offset += 4
+
+    nombre_length = int.from_bytes(payload[offset:offset+2], byteorder='big')
+    offset += 2
+    nombre = payload[offset:offset+nombre_length].decode('utf-8')
+    offset += nombre_length
+
+    apellido_length = int.from_bytes(payload[offset:offset+2], byteorder='big')
+    offset += 2
+    apellido = payload[offset:offset+apellido_length].decode('utf-8')
+    offset += apellido_length
+
+    documento = int.from_bytes(payload[offset:offset+8], byteorder='big')
+    offset += 8
+
+    nacimiento = payload[offset:offset+10].decode('utf-8')
+    offset += 10
+
+    numero = int.from_bytes(payload[offset:offset+4], byteorder='big')
+    offset += 4
+
+    return Bet(agency, nombre, apellido, str(documento), nacimiento, str(numero))
+
+def build_ack_message(agency_id, status_code):
+    payload = bytearray()
+    payload.append(0x02)  # message type
+    payload.extend(agency_id.to_bytes(4, byteorder='big'))
+    payload.append(status_code)
+
+    length = len(payload).to_bytes(4, byteorder='big')
+
+    return length + payload
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -51,14 +105,31 @@ class Server:
         client socket will also be closed
         """
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
-            addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
-        except OSError as e:
-            logging.error("action: receive_message | result: fail | error: {e}")
+            address = client_sock.getpeername()
+            logging.info(f'action: handle_client_connection | result: in_progress | ip: {address[0]}')
+
+            # Read message length            
+            message_length = int.from_bytes(recv_fully(client_sock, 4), byteorder='big')
+
+            # Read message payload
+            payload = recv_fully(client_sock, message_length)
+
+            bet = parse_bet(payload)
+            store_bets([bet])
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+
+            ack_message = build_ack_message(bet.agency, 0x00)
+            client_sock.sendall(ack_message)
+            logging.info(f'action: handle_client_connection | result: success | ip: {address[0]}')
+
+        except Exception as e:
+            logging.error(f"action: receive_message | result: fail | error: {e}")
+
+            try:
+                ack_message = build_ack_message(0, 0x01)
+                client_sock.sendall(ack_message)
+            except:
+                pass
         finally:
             client_sock.close()
             self.clients.remove(client_sock)
