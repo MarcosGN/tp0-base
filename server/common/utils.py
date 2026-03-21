@@ -49,3 +49,12 @@ def load_bets() -> list[Bet]:
         for row in reader:
             yield Bet(row[0], row[1], row[2], row[3], row[4], row[5])
 
+def recv_fully(sock, n):
+    """Receive exactly n bytes from the socket."""
+    data = bytearray()
+    while len(data) < n:
+        packet = sock.recv(n - len(data))
+        if not packet:
+            raise ConnectionError("Socket connection closed")
+        data.extend(packet)
+    return bytes(data)
