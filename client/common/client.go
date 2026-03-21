@@ -1,7 +1,6 @@
 package common
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -94,16 +93,16 @@ func buildBetMessage(id uint32,
 	payload = append(payload, idBytes...)
 
 	nombreBytes := []byte(nombre)
-	nombreLength := uint32(len(nombre))
+	nombreLength := uint16(len(nombre))
 	nombreLengthBytes := make([]byte, 2)
-	binary.BigEndian.PutUint32(nombreLengthBytes, nombreLength)
+	binary.BigEndian.PutUint16(nombreLengthBytes, nombreLength)
 	payload = append(payload, nombreLengthBytes...)
 	payload = append(payload, nombreBytes...)
 
 	apellidoBytes := []byte(apellido)
-	apellidoLength := uint32(len(apellido))
+	apellidoLength := uint16(len(apellido))
 	apellidoLengthBytes := make([]byte, 2)
-	binary.BigEndian.PutUint32(apellidoLengthBytes, apellidoLength)
+	binary.BigEndian.PutUint16(apellidoLengthBytes, apellidoLength)
 	payload = append(payload, apellidoLengthBytes...)
 	payload = append(payload, apellidoBytes...)
 
@@ -121,7 +120,43 @@ func buildBetMessage(id uint32,
 	binary.BigEndian.PutUint32(numeroBytes, numero)
 	payload = append(payload, numeroBytes...)
 
-	return payload, nil
+	finalMessage := make([]byte, 4+len(payload))
+	binary.BigEndian.PutUint32(finalMessage, uint32(len(payload)))
+	copy(finalMessage[4:], payload)
+
+	return finalMessage, nil
+}
+
+func ReadACK(conn net.Conn) (uint32, byte, error) {
+	lenBytes, err := readFully(conn, 4)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	length := binary.BigEndian.Uint32(lenBytes)
+
+	payload, err := readFully(conn, int(length))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if len(payload) < 6 {
+		return 0, 0, fmt.Errorf("ACK payload demasiado corto")
+	}
+
+	messageType := payload[0]
+	id := binary.BigEndian.Uint32(payload[1:5])
+	status := payload[5]
+
+	if messageType != 0x02 {
+		return 0, 0, fmt.Errorf("Tipo de mensaje inesperado: %v", messageType)
+	}
+
+	if status != 0x00 {
+		return id, messageType, fmt.Errorf("ACK indica error para el mensaje con ID %v", id)
+	}
+
+	return id, status, nil
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
@@ -137,28 +172,49 @@ func (c *Client) StartClientLoop(SignalChannel chan os.Signal) {
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
 
-		// TODO: Modify the send to avoid short-write
-		fmt.Fprintf(
-			c.conn,
-			"[CLIENT %v] Message N°%v\n",
+		msg, err := buildBetMessage(c.config.ID, c.config.Nombre, c.config.Apellido, c.config.Documento, c.config.Nacimiento, c.config.Numero)
+		if err != nil {
+			log.Errorf("action: build_message | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+			c.conn.Close()
+			return
+		}
+
+		err = writeFully(c.conn, msg)
+		if err != nil {
+			log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+			c.conn.Close()
+			return
+		}
+
+		log.Infof("action: send_message | result: success | client_id: %v | msg_id: %v",
 			c.config.ID,
 			msgID,
 		)
-		msg, err := bufio.NewReader(c.conn).ReadString('\n')
+
+		ackID, ackStatus, err := ReadACK(c.conn)
 		c.conn.Close()
 
 		if err != nil {
-			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
+			log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
 				c.config.ID,
 				err,
 			)
 			return
 		}
 
-		log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
+		log.Infof("action: read_ack | result: success | client_id: %v | ack_id: %v | ack_status: %v",
 			c.config.ID,
-			msg,
+			ackID,
+			ackStatus,
 		)
+
+		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v", c.config.Documento, c.config.Numero)
 
 		// Wait a time between sending one message and the next one
 		time.Sleep(c.config.LoopPeriod)
