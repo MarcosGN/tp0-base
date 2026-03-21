@@ -2,7 +2,9 @@ package common
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"time"
@@ -14,10 +16,15 @@ var log = logging.MustGetLogger("log")
 
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
-	ID            string
+	ID            uint32
 	ServerAddress string
 	LoopAmount    int
 	LoopPeriod    time.Duration
+	Nombre        string
+	Apellido      string
+	Documento     uint64
+	Nacimiento    string
+	Numero        uint32
 }
 
 // Client Entity that encapsulates how
@@ -49,6 +56,72 @@ func (c *Client) createClientSocket() error {
 	}
 	c.conn = conn
 	return nil
+}
+
+func writeFully(conn net.Conn, data []byte) error {
+	totalWritten := 0
+	for totalWritten < len(data) {
+		n, err := conn.Write(data[totalWritten:])
+		if err != nil {
+			return err
+		}
+		totalWritten += n
+	}
+	return nil
+}
+
+func readFully(conn net.Conn, size int) ([]byte, error) {
+	buffer := make([]byte, size)
+	_, err := io.ReadFull(conn, buffer)
+	if err != nil {
+		return nil, err
+	}
+	return buffer, nil
+}
+
+func buildBetMessage(id uint32,
+	nombre string,
+	apellido string,
+	documento uint64,
+	nacimiento string,
+	numero uint32) ([]byte, error) {
+	payload := make([]byte, 0)
+
+	payload = append(payload, 0x01) // Message type: Bet
+
+	idBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(idBytes, id)
+	payload = append(payload, idBytes...)
+
+	nombreBytes := []byte(nombre)
+	nombreLength := uint32(len(nombre))
+	nombreLengthBytes := make([]byte, 2)
+	binary.BigEndian.PutUint32(nombreLengthBytes, nombreLength)
+	payload = append(payload, nombreLengthBytes...)
+	payload = append(payload, nombreBytes...)
+
+	apellidoBytes := []byte(apellido)
+	apellidoLength := uint32(len(apellido))
+	apellidoLengthBytes := make([]byte, 2)
+	binary.BigEndian.PutUint32(apellidoLengthBytes, apellidoLength)
+	payload = append(payload, apellidoLengthBytes...)
+	payload = append(payload, apellidoBytes...)
+
+	documentoBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(documentoBytes, documento)
+	payload = append(payload, documentoBytes...)
+
+	if len(nacimiento) != 10 {
+		return nil, fmt.Errorf("nacimiento debe tener formato YYYY-MM-DD")
+	}
+	nacimientoBytes := []byte(nacimiento)
+	payload = append(payload, nacimientoBytes...)
+
+	numeroBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(numeroBytes, numero)
+	payload = append(payload, numeroBytes...)
+
+	return payload, nil
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
