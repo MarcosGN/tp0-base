@@ -29,6 +29,11 @@ for i in range(1, client_count + 1):
     entrypoint: /client
     environment:
       - CLI_ID={i}
+      - CLI_NOMBRE=Santiago Lionel
+      - CLI_APELLIDO=Lorca
+      - CLI_DOCUMENTO=30904465
+      - CLI_NACIMIENTO=1999-03-17
+      - CLI_NUMERO=7574
     volumes:
       - ./client/config.yaml:/config.yaml
     networks:
