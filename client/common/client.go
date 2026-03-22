@@ -54,66 +54,56 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
-// StartClientLoop Send messages to the client until some time threshold is met
+// StartClientLoop Send messages to the client
 func (c *Client) StartClientLoop(SignalChannel chan os.Signal) {
-	// There is an autoincremental msgID to identify every message sent
-	// Messages if the message amount threshold has not been surpassed
-	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
-		if len(SignalChannel) > 0 {
-			log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
-			c.conn.Close()
-			return
-		}
-		// Create the connection the server in every loop iteration. Send an
-		c.createClientSocket()
-
-		msg, err := buildBetMessage(c.config.ID, c.config.Nombre, c.config.Apellido, c.config.Documento, c.config.Nacimiento, c.config.Numero)
-		if err != nil {
-			log.Errorf("action: build_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.conn.Close()
-			return
-		}
-
-		err = writeFully(c.conn, msg)
-		if err != nil {
-			log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.conn.Close()
-			return
-		}
-
-		log.Infof("action: send_message | result: success | client_id: %v | msg_id: %v",
-			c.config.ID,
-			msgID,
-		)
-
-		ackID, ackStatus, err := ReadACK(c.conn)
+	if len(SignalChannel) > 0 {
+		log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 		c.conn.Close()
-
-		if err != nil {
-			log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			return
-		}
-
-		log.Infof("action: read_ack | result: success | client_id: %v | ack_id: %v | ack_status: %v",
-			c.config.ID,
-			ackID,
-			ackStatus,
-		)
-
-		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v", c.config.Documento, c.config.Numero)
-
-		// Wait a time between sending one message and the next one
-		time.Sleep(c.config.LoopPeriod)
-
+		return
 	}
-	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+	// Create the connection the server.
+	c.createClientSocket()
+
+	msg, err := buildBetMessage(c.config.ID, c.config.Nombre, c.config.Apellido, c.config.Documento, c.config.Nacimiento, c.config.Numero)
+	if err != nil {
+		log.Errorf("action: build_message | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		c.conn.Close()
+		return
+	}
+
+	err = writeFully(c.conn, msg)
+	if err != nil {
+		log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		c.conn.Close()
+		return
+	}
+
+	log.Infof("action: send_message | result: success | client_id: %v |",
+		c.config.ID,
+	)
+
+	ackID, ackStatus, err := ReadACK(c.conn)
+	c.conn.Close()
+
+	if err != nil {
+		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		return
+	}
+
+	log.Infof("action: read_ack | result: success | client_id: %v | ack_id: %v | ack_status: %v",
+		c.config.ID,
+		ackID,
+		ackStatus,
+	)
+
+	log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v", c.config.Documento, c.config.Numero)
 }
