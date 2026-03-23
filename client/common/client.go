@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"time"
@@ -66,9 +65,7 @@ func (c *Client) createClientSocket() error {
 
 // StartClientLoop Send messages to the client
 func (c *Client) StartClientLoop(SignalChannel chan os.Signal) {
-	path := fmt.Sprintf(".data/agency-%d.csv", c.config.ID)
-
-	bets, err := readsBetsFromCSV(path)
+	bets, err := readsBetsFromCSV("agency.csv")
 	if err != nil {
 		log.Criticalf("action: read_csv | result: fail | client_id: %v | error: %v", c.config.ID, err)
 	}
