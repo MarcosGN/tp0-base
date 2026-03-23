@@ -36,6 +36,7 @@ for i in range(1, client_count + 1):
       - CLI_NUMERO=7574
     volumes:
       - ./client/config.yaml:/config.yaml
+      - ./.data/agency-{i}.csv:/agency.csv
     networks:
       - testing_net
     depends_on:

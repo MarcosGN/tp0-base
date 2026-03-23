@@ -1,14 +1,12 @@
 from common.utils import Bet
 
-def parse_bet(payload):
-    offset = 0
-
+def parse_bet(payload, offset):
     message_type = payload[offset]
     offset += 1
 
     if message_type != 0x01:
-        raise ValueError("Invalid message type")
-    
+        raise ValueError("Invalid bet message")
+
     agency = int.from_bytes(payload[offset:offset+4], byteorder='big')
     offset += 4
 
@@ -31,7 +29,9 @@ def parse_bet(payload):
     numero = int.from_bytes(payload[offset:offset+4], byteorder='big')
     offset += 4
 
-    return Bet(agency, nombre, apellido, str(documento), nacimiento, str(numero))
+    bet = Bet(agency, nombre, apellido, str(documento), nacimiento, str(numero))
+
+    return bet, offset
 
 def build_ack_message(agency_id, status_code):
     payload = bytearray()
@@ -42,3 +42,25 @@ def build_ack_message(agency_id, status_code):
     length = len(payload).to_bytes(4, byteorder='big')
 
     return length + payload
+
+def parse_batch(payload):
+    offset = 0
+    
+    message_type = payload[offset]
+    offset += 1
+
+    if message_type != 0x03:
+        raise ValueError("Invalid batch message")
+    
+    agency = int.from_bytes(payload[offset:offset+4], byteorder='big')
+    offset += 4
+
+    count = int.from_bytes(payload[offset:offset+2], byteorder='big')
+    offset += 2
+
+    bets = []
+    for _ in range(count):
+        bet, offset = parse_bet(payload, offset)
+        bets.append(bet)
+
+    return agency, bets

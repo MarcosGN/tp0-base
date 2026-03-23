@@ -4,7 +4,7 @@ import signal
 import sys
 
 from common.utils import Bet, store_bets, recv_fully
-from common.transfer import parse_bet, build_ack_message
+from common.transfer import parse_batch, parse_bet, build_ack_message
 
 def signal_handler(self, signum, frame):
     self.server.running = False
@@ -62,17 +62,17 @@ class Server:
             # Read message payload
             payload = recv_fully(client_sock, message_length)
 
-            bet = parse_bet(payload)
-            store_bets([bet])
-            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+            agency, bets = parse_batch(payload)
+            store_bets(bets)
 
-            ack_message = build_ack_message(bet.agency, 0x00)
+            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+
+            ack_message = build_ack_message(agency, 0x00)
             client_sock.sendall(ack_message)
+
             logging.info(f'action: handle_client_connection | result: success | ip: {address[0]}')
-
         except Exception as e:
-            logging.error(f"action: receive_message | result: fail | error: {e}")
-
+            logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
             try:
                 ack_message = build_ack_message(0, 0x01)
                 client_sock.sendall(ack_message)
