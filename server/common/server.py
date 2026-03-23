@@ -4,7 +4,7 @@ import signal
 import sys
 
 from common.utils import Bet, store_bets, recv_fully
-from common.transfer import parse_batch, parse_bet, build_ack_message
+from common.transfer import parse_batch, build_ack_message
 
 def signal_handler(self, signum, frame):
     self.server.running = False
@@ -46,31 +46,29 @@ class Server:
 
 
     def __handle_client_connection(self, client_sock):
-        """
-        Read message from a specific client socket and closes the socket
-
-        If a problem arises in the communication with the client, the
-        client socket will also be closed
-        """
         try:
-            address = client_sock.getpeername()
-            logging.info(f'action: handle_client_connection | result: in_progress | ip: {address[0]}')
+            while True:
+                address = client_sock.getpeername()
+                logging.info(f'action: handle_client_connection | result: in_progress | ip: {address[0]}')
 
-            # Read message length            
-            message_length = int.from_bytes(recv_fully(client_sock, 4), byteorder='big')
+                length_bytes = recv_fully(client_sock, 4)
+                if not length_bytes:
+                    break
 
-            # Read message payload
-            payload = recv_fully(client_sock, message_length)
+                message_length = int.from_bytes(length_bytes, byteorder='big')
 
-            agency, bets = parse_batch(payload)
-            store_bets(bets)
+                payload = recv_fully(client_sock, message_length)
 
-            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+                agency, bets = parse_batch(payload)
+                store_bets(bets)
 
-            ack_message = build_ack_message(agency, 0x00)
-            client_sock.sendall(ack_message)
+                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
 
-            logging.info(f'action: handle_client_connection | result: success | ip: {address[0]}')
+                ack_message = build_ack_message(agency, 0x00)
+                client_sock.sendall(ack_message)
+                logging.info(f'action: handle_client_connection | result: success | ip: {address[0]}')
+        except ConnectionError:
+            logging.info(f'action: client_disconnected | result: success | ip: {address[0]}')    
         except Exception as e:
             logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
             try:

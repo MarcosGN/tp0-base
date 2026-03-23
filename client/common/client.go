@@ -72,15 +72,17 @@ func (c *Client) StartClientLoop(SignalChannel chan os.Signal) {
 
 	batches := splitBetsIntoBatches(bets, c.config.MaxBatchAmount, 8*1024)
 
+	if err := c.createClientSocket(); err != nil {
+		log.Criticalf("action: create_socket | result: fail | client_id: %v | error: %v", c.config.ID, err)
+	}
+	defer c.conn.Close()
+
+	log.Criticalf("action: create_socket | result: success | client_id: %v ", c.config.ID)
+
 	for i, batch := range batches {
 		if len(SignalChannel) > 0 {
 			log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
-			c.conn.Close()
 			return
-		}
-
-		if err := c.createClientSocket(); err != nil {
-			log.Criticalf("action: create_socket | result: fail | client_id: %v | error: %v", c.config.ID, err)
 		}
 
 		message, err := buildBatchMessage(c.config.ID, batch)
@@ -97,7 +99,6 @@ func (c *Client) StartClientLoop(SignalChannel chan os.Signal) {
 		if err != nil {
 			log.Criticalf("action: read_ack | result: fail | client_id: %v | error: %v", c.config.ID, err)
 		}
-		c.conn.Close()
 
 		if ackID != c.config.ID {
 			log.Errorf("action: read_ack | result: fail | client_id: %v | error: ACK ID mismatch (expected %v, got %v)", c.config.ID, c.config.ID, ackID)
@@ -110,6 +111,4 @@ func (c *Client) StartClientLoop(SignalChannel chan os.Signal) {
 		log.Infof("action: batch_sent | result: success | client_id: %v | batch_n: %v | cantidad: %v | ack_status: %v", c.config.ID, i, len(batch), ackStatus)
 
 	}
-
-	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
