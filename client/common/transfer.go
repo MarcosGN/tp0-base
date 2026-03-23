@@ -70,6 +70,12 @@ func buildBatchMessage(id uint32, bets []Bet) ([]byte, error) {
 	payload = append(payload, numBetsBytes...)
 
 	for _, bet := range bets {
+		payload = append(payload, 0x01) // message type BET
+
+		idBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(idBytes, id)
+		payload = append(payload, idBytes...)
+
 		nombreBytes := []byte(bet.Nombre)
 		nombreLength := uint16(len(bet.Nombre))
 		nombreLengthBytes := make([]byte, 2)
