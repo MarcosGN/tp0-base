@@ -6,55 +6,6 @@ import (
 	"net"
 )
 
-func buildBetMessage(id uint32,
-	nombre string,
-	apellido string,
-	documento uint64,
-	nacimiento string,
-	numero uint32) ([]byte, error) {
-	payload := make([]byte, 0)
-
-	payload = append(payload, 0x01) // Message type: Bet
-
-	idBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(idBytes, id)
-	payload = append(payload, idBytes...)
-
-	nombreBytes := []byte(nombre)
-	nombreLength := uint16(len(nombre))
-	nombreLengthBytes := make([]byte, 2)
-	binary.BigEndian.PutUint16(nombreLengthBytes, nombreLength)
-	payload = append(payload, nombreLengthBytes...)
-	payload = append(payload, nombreBytes...)
-
-	apellidoBytes := []byte(apellido)
-	apellidoLength := uint16(len(apellido))
-	apellidoLengthBytes := make([]byte, 2)
-	binary.BigEndian.PutUint16(apellidoLengthBytes, apellidoLength)
-	payload = append(payload, apellidoLengthBytes...)
-	payload = append(payload, apellidoBytes...)
-
-	documentoBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(documentoBytes, documento)
-	payload = append(payload, documentoBytes...)
-
-	if len(nacimiento) != 10 {
-		return nil, fmt.Errorf("nacimiento debe tener formato YYYY-MM-DD")
-	}
-	nacimientoBytes := []byte(nacimiento)
-	payload = append(payload, nacimientoBytes...)
-
-	numeroBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(numeroBytes, numero)
-	payload = append(payload, numeroBytes...)
-
-	finalMessage := make([]byte, 4+len(payload))
-	binary.BigEndian.PutUint32(finalMessage, uint32(len(payload)))
-	copy(finalMessage[4:], payload)
-
-	return finalMessage, nil
-}
-
 func buildBatchMessage(id uint32, bets []Bet) ([]byte, error) {
 	payload := make([]byte, 0)
 
