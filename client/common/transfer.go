@@ -63,6 +63,28 @@ func buildBatchMessage(id uint32, bets []Bet) ([]byte, error) {
 	return finalMessage, nil
 }
 
+func buildFinishedMessage(id uint32) []byte {
+	payload := make([]byte, 5)
+	payload[0] = 0x04 // Message type: Finished
+	binary.BigEndian.PutUint32(payload[1:], id)
+
+	msg := make([]byte, 4+len(payload))
+	binary.BigEndian.PutUint32(msg, uint32(len(payload)))
+	copy(msg[4:], payload)
+	return msg
+}
+
+func buildQueryMessage(id uint32) []byte {
+	payload := make([]byte, 5)
+	payload[0] = 0x05 // Message type: Query consultar ganadores
+	binary.BigEndian.PutUint32(payload[1:], id)
+
+	msg := make([]byte, 4+len(payload))
+	binary.BigEndian.PutUint32(msg, uint32(len(payload)))
+	copy(msg[4:], payload)
+	return msg
+}
+
 func ReadACK(conn net.Conn) (uint32, byte, error) {
 	lenBytes, err := readFully(conn, 4)
 	if err != nil {
@@ -93,4 +115,55 @@ func ReadACK(conn net.Conn) (uint32, byte, error) {
 	}
 
 	return id, status, nil
+}
+
+func ReadWinnersResponse(conn net.Conn) ([]uint64, bool, error) {
+	lenBytes, err := readFully(conn, 4)
+	if err != nil {
+		return nil, false, err
+	}
+
+	length := binary.BigEndian.Uint32(lenBytes)
+	payload, err := readFully(conn, int(length))
+	if err != nil {
+		return nil, false, err
+	}
+
+	if len(payload) < 6 {
+		return nil, false, fmt.Errorf("respuesta ganadores demasiado corta")
+	}
+
+	msgType := payload[0]
+	if msgType != 0x06 {
+		return nil, false, fmt.Errorf("tipo de mensaje inesperado: %v", msgType)
+	}
+
+	status := payload[5]
+
+	if status == 0x01 {
+		return nil, false, nil
+	}
+
+	if status != 0x00 {
+		return nil, false, fmt.Errorf("respuesta ganadores con status de error: %v", status)
+	}
+
+	if len(payload) < 8 {
+		return nil, false, fmt.Errorf("respuesta ganadores sin campo count")
+	}
+
+	count := binary.BigEndian.Uint16(payload[6:8])
+	winners := make([]uint64, 0, count)
+
+	offset := 8
+	for i := 0; i < int(count); i++ {
+		if offset+8 > len(payload) {
+			return nil, false, fmt.Errorf("respuesta ganadores truncada")
+		}
+		dni := binary.BigEndian.Uint64(payload[offset : offset+8])
+		winners = append(winners, dni)
+		offset += 8
+	}
+
+	return winners, true, nil
 }

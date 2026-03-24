@@ -109,6 +109,53 @@ func (c *Client) StartClientLoop(SignalChannel chan os.Signal) {
 		}
 
 		log.Infof("action: batch_sent | result: success | client_id: %v | batch_n: %v | cantidad: %v | ack_status: %v", c.config.ID, i, len(batch), ackStatus)
+	}
 
+	finishedMessage := buildFinishedMessage(c.config.ID)
+	if err := writeFully(c.conn, finishedMessage); err != nil {
+		log.Criticalf("action: send_fin | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		c.conn.Close()
+		return
+	}
+
+	_, _, err = ReadACK(c.conn)
+	if err != nil {
+		log.Criticalf("action: recv_fin_ack | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		c.conn.Close()
+		return
+	}
+
+	log.Infof("action: fin_apuestas | result: success | client_id: %v", c.config.ID)
+	c.conn.Close()
+
+	for {
+		time.Sleep(c.config.LoopPeriod)
+
+		if err := c.createClientSocket(); err != nil {
+			return
+		}
+
+		queryMessage := buildQueryMessage(c.config.ID)
+		if err := writeFully(c.conn, queryMessage); err != nil {
+			log.Errorf("action: send_query | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			c.conn.Close()
+			continue
+		}
+
+		winners, ready, err := ReadWinnersResponse(c.conn)
+		c.conn.Close()
+
+		if err != nil {
+			log.Errorf("action: recv_winners | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			continue
+		}
+
+		if !ready {
+			log.Infof("action: consulta_ganadores | result: pending | client_id: %v", c.config.ID)
+			continue
+		}
+
+		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v", len(winners))
+		return
 	}
 }

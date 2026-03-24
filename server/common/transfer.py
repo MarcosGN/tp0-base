@@ -64,3 +64,33 @@ def parse_batch(payload):
         bets.append(bet)
 
     return agency, bets
+
+def parse_finished(payload):
+    if len(payload) < 5 or payload[0] != 0x04:
+        raise ValueError("Invalid fin message")
+    agency = int.from_bytes(payload[1:5], byteorder='big')
+    return agency
+ 
+def parse_query(payload):
+    """Parsea mensaje 0x05: consulta de ganadores. Devuelve el agency id."""
+    if len(payload) < 5 or payload[0] != 0x05:
+        raise ValueError("Invalid query message")
+    agency = int.from_bytes(payload[1:5], byteorder='big')
+    return agency
+ 
+def build_winners_message(agency_id, winner_documents, ready):
+    payload = bytearray()
+    payload.append(0x06)  # message type: winners
+    payload.extend(agency_id.to_bytes(4, byteorder='big'))
+ 
+    if not ready:
+        payload.append(0x01)  
+    else:
+        payload.append(0x00)  
+        count = len(winner_documents)
+        payload.extend(count.to_bytes(2, byteorder='big'))
+        for doc in winner_documents:
+            payload.extend(int(doc).to_bytes(8, byteorder='big'))
+ 
+    length = len(payload).to_bytes(4, byteorder='big')
+    return length + payload
