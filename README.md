@@ -1,5 +1,6 @@
 # Resolucion de ejercicios:
-##Ejercicio número 1:
+## Ejercicio número 1:
+
 Implementé un sript de bash que llama a un script de python. El script recibe como parametro el nombre del archivo de salida y la cantidad de
 clientes deseada. El archivo se va a generar en la raiz del proyecto, si ya existía un archivo de mismo nombre lo reescribe. Para ejecutar 
 el script se usa el siguiente comando:
