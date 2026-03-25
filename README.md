@@ -1,3 +1,26 @@
+# Resolucion de ejercicios:
+## Ejercicio número 1:
+
+Implementé un sript de bash que llama a un script de python. El script recibe como parametro el nombre del archivo de salida y la cantidad de
+clientes deseada. El archivo se va a generar en la raiz del proyecto, si ya existía un archivo de mismo nombre lo reescribe. Para ejecutar 
+el script se usa el siguiente comando:
+
+`./generar-compose.sh <archivo de salida> N`
+(siendo N la cantidad de clientes)
+
+Para ejecutar el proyecto se ultiza:
+
+`make docker-compose-up`
+
+## Ejercicio número 2:
+Creé volumenes que mapean las rutas de los archivos de configuración dentro del Docker host a rutas dentro del container, para que 
+se puedan modificar los archivos de configuracion sin tener que tirar y volver a levantar el container. Se eliminan las variables
+de entorno que se generaban en el dokcer-compose para que no se pisen con las del archivo de configuracion.
+
+Para ejecutar el proyecto se ultiza:
+
+`make docker-compose-up`
+
 # TP0: Docker + Comunicaciones + Concurrencia
 
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
