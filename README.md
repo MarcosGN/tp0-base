@@ -1,3 +1,40 @@
+## Ejercicio número 1:
+
+Implementé un sript de bash que llama a un script de python. El script recibe como parametro el nombre del archivo de salida y la cantidad de
+clientes deseada. El archivo se va a generar en la raiz del proyecto, si ya existía un archivo de mismo nombre lo reescribe. Para ejecutar 
+el script se usa el siguiente comando:
+
+`./generar-compose.sh <archivo de salida> N`
+(siendo N la cantidad de clientes)
+
+Para ejecutar el proyecto se ultiza:
+
+`make docker-compose-up`
+
+## Ejercicio número 2:
+Creé volumenes que mapean las rutas de los archivos de configuración dentro del Docker host a rutas dentro del container, para que 
+se puedan modificar los archivos de configuracion sin tener que tirar y volver a levantar el container. Se eliminan las variables
+de entorno que se generaban en el dokcer-compose para que no se pisen con las del archivo de configuracion.
+
+Para ejecutar el proyecto se ultiza:
+
+`make docker-compose-up`
+
+## Ejercicio número 3:
+Implemente un script que levanta un contenedor ligero de alpine y envia via netcat un mensaje al servidor para corroborar su correcto
+funcionamiento.
+Para ejecutar este script se hace:
+
+`./validar-echo-server.sh`
+
+## Ejercicio número 4:
+Para implementar el manejo de señales para gracefull shutdown:
+-En el main del cliente hice un canal de señales que se suscribe a SIGINT y SIGTERM, en el loop del cliente se revisa si captura algo 
+ese canal, si fue ese el caso, se cierra la conexion al servidor y el programa termina de forma gracefull.
+-En el servidor se agrega una funcion signal_handler que se invoca cuando se captura una señal SIGINT o SIGTERM. Esta funcion cierra
+los recursos, cambia el flag de estado del servidor y se cierra el programa de forma gracefull.
+
+
 # TP0: Docker + Comunicaciones + Concurrencia
 
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
