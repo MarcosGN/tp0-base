@@ -46,18 +46,22 @@ El protocolo que defini es el siguiente:
 (Para comunicacion utilizo sockets TCP y para encodear los mensajes lo hago de forma big endian)
 
 Bet : [largo_mensaje] [tipo] [agency_id] [largo_nombre] [nombre]  [largo_apellido] [apellido] [documento][nacimiento][numero_apuesta]
+
 	 {4Bytes}    {1Byte}  {4bytes}     {2 Bytes}    {N bytes}    {2 Bytes}     {M bytes}   {8Bytes}    {10Bytes}     {4Bytes}
 
 ACK: [largo_mensaje] [tipo] [agency_id] [status_code]
+
          {4Bytes}   {1Byte}  {4Bytes}      {1Byte}
      
 Donde el tipo puede ser: 0x01(Bet), 0x02(ACK)
+
 Y el status puede ser: 0x00(ok), 0x01(error)
 
 En cuanto a implementacion:
 -En el cliente implemente funciones para leer completo y escribir completo usando el largo de mensaje recibido por parametro. Hice
 funciones para crear los mensajes de Bets y leer los Acks siguiendo mi protocolo. Finalmente en el clientLoop hice que mande la apuesta 
 y espere a recibir el ACK.
+
 -En el servidor, hice una funcion para crear un mensaje ACK y uno para parsear un mensaje de apuesta del cliente. En handle_client_conection
 hice que lea el mensaje del cliente, lo parsee como apuesta, lo guarde y envie el ACK.
 
