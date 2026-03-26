@@ -1,3 +1,113 @@
+# Resolucion de ejercicios:
+## Ejercicio número 1:
+
+Implementé un sript de bash que llama a un script de python. El script recibe como parametro el nombre del archivo de salida y la cantidad de
+clientes deseada. El archivo se va a generar en la raiz del proyecto, si ya existía un archivo de mismo nombre lo reescribe. Para ejecutar 
+el script se usa el siguiente comando:
+
+`./generar-compose.sh <archivo de salida> N`
+(siendo N la cantidad de clientes)
+
+Para ejecutar el proyecto se ultiza:
+
+`make docker-compose-up`
+
+## Ejercicio número 2:
+Creé volumenes que mapean las rutas de los archivos de configuración dentro del Docker host a rutas dentro del container, para que 
+se puedan modificar los archivos de configuracion sin tener que tirar y volver a levantar el container. Se eliminan las variables
+de entorno que se generaban en el dokcer-compose para que no se pisen con las del archivo de configuracion.
+
+Para ejecutar el proyecto se ultiza:
+
+`make docker-compose-up`
+
+## Ejercicio número 3:
+Implemente un script que levanta un contenedor ligero de alpine y envia via netcat un mensaje al servidor para corroborar su correcto
+funcionamiento.
+Para ejecutar este script se hace:
+
+`./validar-echo-server.sh`
+
+## Ejercicio número 4:
+Para implementar el manejo de señales para gracefull shutdown:
+-En el main del cliente hice un canal de señales que se suscribe a SIGINT y SIGTERM, en el loop del cliente se revisa si captura algo 
+ese canal, si fue ese el caso, se cierra la conexion al servidor y el programa termina de forma gracefull.
+-En el servidor se agrega una funcion signal_handler que se invoca cuando se captura una señal SIGINT o SIGTERM. Esta funcion cierra
+los recursos, cambia el flag de estado del servidor y se cierra el programa de forma gracefull.
+
+Para ejecutar el proyecto se ultiza:
+
+`make docker-compose-up`
+
+## Ejercicio Número 5:
+Decidi que en mi protocolo los mensajes de tamaño variable van a a llevar al principio 4 bytes indicando el largo del mensaje, como 
+conozco los tamaños puedo evitar short read/write asegurandome que se lean/esciban la cantidad correcta de bytes.
+El protocolo que defini es el siguiente:
+(Para comunicacion utilizo sockets TCP y para encodear los mensajes lo hago de forma big endian)
+
+Bet : [largo_mensaje] [tipo] [agency_id] [largo_nombre] [nombre]  [largo_apellido] [apellido] [documento][nacimiento][numero_apuesta]
+
+	 {4Bytes}    {1Byte}  {4bytes}     {2 Bytes}    {N bytes}    {2 Bytes}     {M bytes}   {8Bytes}    {10Bytes}     {4Bytes}
+
+ACK: [largo_mensaje] [tipo] [agency_id] [status_code]
+
+         {4Bytes}   {1Byte}  {4Bytes}      {1Byte}
+     
+Donde el tipo puede ser: 0x01(Bet), 0x02(ACK)
+
+Y el status puede ser: 0x00(ok), 0x01(error)
+
+En cuanto a implementacion:
+-En el cliente implemente funciones para leer completo y escribir completo usando el largo de mensaje recibido por parametro. Hice
+funciones para crear los mensajes de Bets y leer los Acks siguiendo mi protocolo. Finalmente en el clientLoop hice que mande la apuesta 
+y espere a recibir el ACK.
+
+-En el servidor, hice una funcion para crear un mensaje ACK y uno para parsear un mensaje de apuesta del cliente. En handle_client_conection
+hice que lea el mensaje del cliente, lo parsee como apuesta, lo guarde y envie el ACK.
+
+Para ejecutar el proyecto se utiliza:
+
+`make docker-compose-up`
+
+## Ejercicio número 6:
+Para este ejercicio modifique el protocolo para que permita mensajes de tipo batch, que tienen la agencia, la cantidad de apuestas 
+contenidas y una serie de bets siguiendo el formato del ejercicio anterior.
+Los batchs usan el tipo 0x03
+
+batch:   [tipo] [agency_id] [#apuestas] [bet1]...[betN]
+
+        {1Byte}  {4Bytes}    {2Bytes}
+
+Basicamente hice que el cliente lea del csv correspondiente, divida las apuestas en batchs, parsee y envie cada uno de esos batchs.
+El cliente se queda esperando el ACK del server con la confirmacion de que se almacenaron todas las apuestas. El servidor divide
+el batch en apuestas individuales y las guarda, luego manda el ack.
+
+Para ejecutar el proyecto se utiliza:
+
+`make docker-compose-up`
+
+## Ejercicio número 7:
+Se agregan tres mensajes nuevos, cuando el cliente termina de mandar batchs, envia finished y empieza intentar mandar query
+para conocer el resultado del sorteo. El servidor sabe la cantidad de clientes porque lo lee en una variable de entorno
+cuando llegan todos los finished, realiza el sorteo.
+Tipos nuevos 0x04(finished), 0x05(query), 0x06(winners)
+
+finished: [tipo]  [agency_id]
+
+          {1Byte}  {4Bytes}
+          
+query:    [tipo]  [agency_id]
+
+          {1Byte}  {4Bytes}
+
+winners  [tipo]  [agency_id] [#DNIs] [DNI1] ... [DNIN]
+
+         {1Byte}  {4Bytes}  {2Bytes}
+         
+Para ejecutar el proyecto se utiliza:
+
+`make docker-compose-up`
+
 # TP0: Docker + Comunicaciones + Concurrencia
 
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
