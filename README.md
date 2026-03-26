@@ -112,13 +112,20 @@ Para ejecutar el proyecto se utiliza:
 Use multiprocessing para este ejercicio, levanto un proceso por cada conexión en el servidor, cuando cierra el server
 mato todos los procesos.
 
+
 Use las siguientes herramientas para sincronización:
 
+
 multiprocessing.Lock: Se usa para lectura/escritura del archivo bets.csv y para la lista interna del server de agencias finalizadas.
+
 multiprocessing.Process: Se usa para crear procesos, uno por cada cliente que entra al server.
+
 multiprocessing.Manager.dict: Se usa como diccionario concurrente para guardar los ganadores de cada agencia.
+
 multiprocessing.Manager.list: Se usa como lista concurrente para guardar las agencias que terminaron de mandar sus batchs.
+
 multiprocessing.Manager.Event: Se utiliza para sincronizar cuando ocurre un evento en este caso cuando ya se puede hacer el sorteo.
+
 
 Para ejecutar el proyecto se utiliza:
 
