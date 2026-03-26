@@ -34,6 +34,9 @@ ese canal, si fue ese el caso, se cierra la conexion al servidor y el programa t
 -En el servidor se agrega una funcion signal_handler que se invoca cuando se captura una señal SIGINT o SIGTERM. Esta funcion cierra
 los recursos, cambia el flag de estado del servidor y se cierra el programa de forma gracefull.
 
+Para ejecutar el proyecto se ultiza:
+
+`make docker-compose-up`
 
 # TP0: Docker + Comunicaciones + Concurrencia
 
